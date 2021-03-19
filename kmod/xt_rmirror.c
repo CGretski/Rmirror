@@ -106,6 +106,7 @@ bool encap_packet4(struct sk_buff *skb, const struct xt_rmirror_tginfo *info)
          * as if it had progressed through the stack
          */
         if (!skb_mac_header_was_set(skb)) {
+
                 if (skb->dev == NULL) {
                         iph = ip_hdr(skb);
                         rmirror_tg_route4(skb, iph->daddr);
@@ -120,6 +121,14 @@ bool encap_packet4(struct sk_buff *skb, const struct xt_rmirror_tginfo *info)
                                 skb->len);
                         mac_needed = true;
                 }
+                ehdr = eth_hdr(skb);
+                extra_header = extra_header + sizeof(*ehdr);
+                if (skb_headroom(skb) < extra_header) {
+                        pskb_expand_head(skb, extra_header, 0, GFP_ATOMIC);
+                }
+                datamac = (struct ethhdr*) skb_push(skb, sizeof(*ehdr));
+		skb_reset_mac_header(skb);
+		datamac->h_proto=ETH_P_IP;
 
                 if (skb_headroom(skb) < extra_header) {
                         pskb_expand_head(skb, extra_header, 0, GFP_ATOMIC);
@@ -132,6 +141,7 @@ bool encap_packet4(struct sk_buff *skb, const struct xt_rmirror_tginfo *info)
                 }
                 datamac = (struct ethhdr*) skb_push(skb, sizeof(*ehdr));
                 memcpy(datamac, ehdr, sizeof(*ehdr));
+		datamac->h_proto=ETH_P_IP;
         }
 
         skb->encapsulation = 1;
